@@ -1,0 +1,99 @@
+.calendar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f9f9f9;
+}
+
+.calendar-box {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  width: 100%;
+}
+
+/* General Calendar Cell Styling */
+.calendar-cell {
+  text-align: center;
+  padding: 8px;
+  border: 1px solid #ddd;
+  min-height: 100px;
+  background-color: #fff;
+  transition: background-color 0.3s ease;
+}
+
+/* Highlight today's date */
+.today-cell {
+  background-color: #61cbfc !important; /* Yellow background */
+  font-weight: bold;
+}
+
+/* Date Label */
+.date-label {
+  font-weight: bold;
+  color: #333;
+}
+
+/* Event Items */
+.event-item {
+  background: #1890ff;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: grab;
+  margin: 5px 0;
+}
+
+.event-item:hover {
+  background: #40a9ff;
+}
+
+/* Event List */
+.event-list {
+  list-style: none;
+  padding: 0;
+  margin: 5px 0;
+}
+.week-days-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  padding: 0 10px;
+}
+
+.week-day {
+  flex: 1;
+  text-align: center;
+  font-weight: bold;
+}
+.date-label {
+  position: relative;
+  display: inline-block;
+  font-size: 14px;
+}
+
+.task-dot {
+  width: 8px;
+  height: 8px;
+  background-color: red;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+/* Centering the Year and Month in the Calendar Header */
+.ant-picker-calendar-header {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.ant-picker-calendar-header > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+}
