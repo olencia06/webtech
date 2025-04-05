@@ -10,7 +10,7 @@ import RegisterForm from "./components/RegisterForm";
 import Dashboard from "./pages/Dashboard";
 import TasksPage from "./pages/Tasks";
 import ProfilePage from "./pages/Profile";
-import HomePage from "./pages/Home";
+import NotesPage from "./pages/Notes";
 import LayoutWrapper from "./components/LayoutWrapper";
 import { UserContext } from "./context/UserContext";
 
@@ -26,7 +26,14 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<HomePage user={user} />} />
+        {/* Redirect root to login if no user, otherwise to dashboard/home */}
+        <Route
+          path="/"
+          element={
+            user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />
+          }
+        />
+
         <Route path="/login" element={<AuthForm setUser={setUser} />} />
         <Route path="/register" element={<RegisterForm />} />
 
@@ -46,6 +53,16 @@ function App() {
             <ProtectedRoute>
               <LayoutWrapper user={user}>
                 <TasksPage />
+              </LayoutWrapper>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notes"
+          element={
+            <ProtectedRoute>
+              <LayoutWrapper user={user}>
+                <NotesPage />
               </LayoutWrapper>
             </ProtectedRoute>
           }

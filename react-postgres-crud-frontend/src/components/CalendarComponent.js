@@ -1,11 +1,14 @@
 import React, { useState, useContext } from "react";
 import "antd/dist/reset.css";
 import "./calendar.css";
-import { Calendar, Card, List, Modal, Button, theme } from "antd";
-import { CloseOutlined } from "@ant-design/icons";
+import { Calendar, Card, List, Modal, Button, theme, message } from "antd";
+import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import moment from "moment";
+import dayjs from "dayjs";
+import AddTask from "../components/AddTask";
+import { UserContext } from "../context/UserContext";
 
 const Ctx = React.createContext(null);
 
@@ -45,7 +48,7 @@ const CalendarCell = ({ date, events, notices, isCardView }) => {
     <div ref={drop} className={`calendar-cell ${isToday ? "today-cell" : ""}`}>
       <div className="date-label">
         {date.format("D")}
-        {/* Show red dot in card view, but not in full view */}
+        {/* Show red dot in card view when there are tasks */}
         {isCardView && hasTask && <span className="task-dot" />}
       </div>
       <ul className="event-list">
@@ -61,13 +64,16 @@ const CalendarCell = ({ date, events, notices, isCardView }) => {
   );
 };
 
-const CalendarComponent = () => {
+const CalendarComponent = ({ setBreadcrumbExtra }) => {
+  const { user } = useContext(UserContext);
   const [show, setShow] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [data, setData] = useState({});
+  const [notices, setNotices] = useState({});
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isCardView, setIsCardView] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
 
   const { token } = theme.useToken();
 
@@ -76,12 +82,6 @@ const CalendarComponent = () => {
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     padding: "10px",
-  };
-
-  const notices = {
-    4: [{ id: 1, title: "Project Deadline" }],
-    10: [{ id: 2, title: "Team Meeting" }],
-    20: [{ id: 3, title: "Holiday" }],
   };
 
   const moveEvent = (oldIdx, newD) => {
@@ -98,15 +98,68 @@ const CalendarComponent = () => {
     setSelectedTask(task);
   };
 
-  const handleDateSelect = (date) => {
-    setSelectedDate(date.format("D"));
+  const handleDateSelect = async (date) => {
+    const selectedDay = date.format("YYYY-MM-DD");
+    setSelectedDate(selectedDay);
     setIsCardView(true);
+    setBreadcrumbExtra?.("Tasks");
+    console.log("User ID:", user.id);
+    console.log("Selected Date:", selectedDay);
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/tasks/5/`);
+      const tasks = await res.json();
+      setNotices((prev) => {
+        const updated = { ...prev };
+        updated[selectedDay] = tasks; // Store tasks by full date
+        return updated;
+      });
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+    }
   };
 
   const handleCancelView = () => {
     setIsCardView(false);
     setSelectedTask(null);
     setSelectedDate(null);
+    setBreadcrumbExtra?.(null); // ✅ Resets breadcrumb
+  };
+
+  const handleTaskAdd = async (newTask) => {
+    try {
+      const res = await fetch("http://localhost:5000/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({
+          title: newTask.title,
+          description: newTask.description,
+          due_date: newTask.dueDate,
+          priority: newTask.priority,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to add task");
+
+      const addedTask = await res.json();
+      const taskDay = dayjs(addedTask.due_date).format("YYYY-MM-DD");
+
+      setNotices((prev) => {
+        const updated = { ...prev };
+        if (!updated[taskDay]) updated[taskDay] = [];
+        updated[taskDay].push(addedTask);
+        return updated;
+      });
+
+      message.success("Task added!");
+      setShowAddTask(false);
+    } catch (error) {
+      console.error(error);
+      message.error("Failed to add task");
+    }
   };
 
   return (
@@ -116,7 +169,7 @@ const CalendarComponent = () => {
           className="main-container"
           style={{ display: "flex", height: "100vh" }}
         >
-          {/* Left Side: Fullscreen calendar or Card View */}
+          {/* Calendar */}
           <div
             style={{
               width: isCardView ? "30%" : "100%",
@@ -131,11 +184,9 @@ const CalendarComponent = () => {
                   dateFullCellRender={(date) => {
                     const day = date.format("D");
                     const hasTask = notices[day] && notices[day].length > 0;
-
                     return (
                       <div className="calendar-card-date">
                         <span>{date.format("D")}</span>
-                        {/* Show red dot in card view */}
                         {hasTask && <span className="task-dot" />}
                       </div>
                     );
@@ -144,14 +195,12 @@ const CalendarComponent = () => {
               </div>
             ) : (
               <Calendar
-                fullCellRender={(
-                  date // ✅ Replaced `dateFullCellRender` with `fullCellRender`
-                ) => (
+                fullCellRender={(date) => (
                   <CalendarCell
                     date={date}
                     events={data[date.format("D")] || []}
-                    notices={notices[date.format("D")] || []}
-                    isCardView={false} // Fullscreen mode, show task text
+                    notices={notices[date.format("YYYY-MM-DD")] || []} // Fetch by full date
+                    isCardView={false}
                   />
                 )}
                 onSelect={handleDateSelect}
@@ -159,21 +208,28 @@ const CalendarComponent = () => {
             )}
           </div>
 
-          {/* Right Side: Task Section */}
+          {/* Task Section */}
           {isCardView && (
             <div
               className="task-section"
               style={{ flex: 1, padding: "20px", position: "relative" }}
             >
-              {/* Close Button */}
               <Button
                 type="text"
                 icon={<CloseOutlined />}
                 onClick={handleCancelView}
                 style={{ position: "absolute", top: 0, right: 0 }}
               />
-
               <h3>Tasks for {selectedDate}</h3>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setShowAddTask(true)}
+                style={{ marginBottom: 16 }}
+              >
+                Add Task
+              </Button>
+
               <List
                 bordered
                 dataSource={notices[selectedDate] || []}
@@ -187,12 +243,8 @@ const CalendarComponent = () => {
                 )}
               />
 
-              {/* Task Details */}
               {selectedTask && (
-                <Card
-                  className="task-details-card"
-                  style={{ marginTop: "20px", padding: "15px" }}
-                >
+                <Card style={{ marginTop: "20px", padding: "15px" }}>
                   <h4>{selectedTask.title}</h4>
                   <p>Date: {selectedDate}</p>
                   <p>Details about the task...</p>
@@ -202,6 +254,7 @@ const CalendarComponent = () => {
           )}
         </div>
 
+        {/* Modals */}
         <Modal
           open={show}
           onOk={() => setShow(false)}
@@ -209,6 +262,14 @@ const CalendarComponent = () => {
         >
           <h3>Event Details</h3>
           <p>{selectedEvent?.title}</p>
+        </Modal>
+
+        <Modal
+          open={showAddTask}
+          footer={null}
+          onCancel={() => setShowAddTask(false)}
+        >
+          <AddTask onTaskAdd={handleTaskAdd} />
         </Modal>
       </DndProvider>
     </Ctx.Provider>

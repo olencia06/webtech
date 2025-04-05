@@ -16,12 +16,13 @@ const AuthForm = ({ setUser }) => {
     try {
       const response = await login(username, password);
 
-      // Store token and user info
+      // Store token and user info in localStorage
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("username", username);
-      setUser({ username }); // <== Add this to keep user logged in in React state
+      setUser({ username }); // Update React state with user info
       message.success("Login successful!");
 
+      // Navigate to dashboard after successful login
       setTimeout(() => navigate("/dashboard"), 1000);
     } catch (err) {
       message.error(err.response?.data?.error || "Login failed");

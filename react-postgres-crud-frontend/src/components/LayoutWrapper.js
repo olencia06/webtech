@@ -8,8 +8,9 @@ const { Header, Content, Footer } = Layout;
 const menuItems = [
   { key: "1", label: "Home", path: "/" },
   { key: "2", label: "Tasks", path: "/tasks" },
-  { key: "3", label: "Calendar", path: "/dashboard" },
-  { key: "4", label: "Profile", path: "/profile" },
+  { key: "3", label: "Notes", path: "/Notes" },
+  { key: "4", label: "Calendar", path: "/dashboard" },
+  { key: "5", label: "Profile", path: "/profile" },
 ];
 
 const LayoutWrapper = ({ children, user }) => {
