@@ -6,35 +6,32 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check localStorage on mount to persist user data across page refreshes
+  // On mount: load user from localStorage
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const username = localStorage.getItem("username");
-    const user_id = localStorage.getItem("id");
+    const storedUser = localStorage.getItem("user");
 
-    // Log to check if values are being retrieved correctly
-    console.log("Fetched from localStorage:", { token, username, user_id });
-
-    // If we find user data in localStorage, set it in state
-    if (token && username && user_id) {
-      setUser({ username, user_id, token }); // Set user details from localStorage
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        console.log("User restored from localStorage:", parsedUser);
+      } catch (err) {
+        console.error("Failed to parse user from localStorage", err);
+        localStorage.removeItem("user");
+      }
     } else {
-      console.log("User data not found in localStorage");
+      console.log("No user found in localStorage.");
     }
 
-    setLoading(false); // Only after checking storage
+    setLoading(false);
   }, []);
 
-  // Persist changes to `user` state to localStorage
+  // Whenever user changes: save to localStorage or clear it
   useEffect(() => {
     if (user) {
-      localStorage.setItem("token", user.token);
-      localStorage.setItem("username", user.username);
-      localStorage.setItem("id", user.user_id);
+      localStorage.setItem("user", JSON.stringify(user));
     } else {
-      localStorage.removeItem("token");
-      localStorage.removeItem("username");
-      localStorage.removeItem("id");
+      localStorage.removeItem("user");
     }
   }, [user]);
 

@@ -46,7 +46,7 @@ const Dashboard = () => {
           />
         );
       case "5":
-        return <ProfilePage />;
+        return <ProfilePage setBreadcrumbExtra={setBreadcrumbExtra} />;
       default:
         return <CalendarComponent />;
     }

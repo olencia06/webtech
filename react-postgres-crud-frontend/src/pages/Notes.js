@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button, List, Modal, Input, Form, message } from "antd";
+import { PlusOutlined } from "@ant-design/icons"; // Import PlusOutlined icon
 
 const NotesPage = () => {
   const [notes, setNotes] = useState([]);
@@ -50,9 +51,6 @@ const NotesPage = () => {
   return (
     <div>
       <h1>Notes</h1>
-      <Button type="primary" onClick={() => setIsModalVisible(true)}>
-        Add Note
-      </Button>
       <List
         bordered
         dataSource={notes}
@@ -72,6 +70,29 @@ const NotesPage = () => {
           </List.Item>
         )}
       />
+
+      {/* Floating action button */}
+      <Button
+        type="primary"
+        icon={<PlusOutlined />}
+        onClick={() => setIsModalVisible(true)}
+        style={{
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          padding: 0,
+          fontSize: 24,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+        }}
+      />
+
+      {/* Modal for adding notes */}
       <Modal
         title="Add New Note"
         visible={isModalVisible}

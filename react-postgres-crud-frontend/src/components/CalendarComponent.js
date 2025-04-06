@@ -1,7 +1,16 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import "antd/dist/reset.css";
 import "./calendar.css";
-import { Calendar, Card, List, Modal, Button, theme, message } from "antd";
+import {
+  Calendar,
+  Card,
+  List,
+  Modal,
+  Button,
+  theme,
+  message,
+  Input,
+} from "antd";
 import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -48,7 +57,6 @@ const CalendarCell = ({ date, events, notices, isCardView }) => {
     <div ref={drop} className={`calendar-cell ${isToday ? "today-cell" : ""}`}>
       <div className="date-label">
         {date.format("D")}
-        {/* Show red dot in card view when there are tasks */}
         {isCardView && hasTask && <span className="task-dot" />}
       </div>
       <ul className="event-list">
@@ -56,7 +64,6 @@ const CalendarCell = ({ date, events, notices, isCardView }) => {
           <EventCell key={event.id} event={event} eventIdx={idx} />
         ))}
       </ul>
-      {/* Show task title only in full view */}
       {!isCardView && hasTask && (
         <div className="notice">📢 {notices[0].title}</div>
       )}
@@ -74,6 +81,8 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [isCardView, setIsCardView] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [upcomingTasks, setUpcomingTasks] = useState([]);
 
   const { token } = theme.useToken();
 
@@ -94,6 +103,38 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     });
   };
 
+  // ✅ FETCH all tasks on mount
+  useEffect(() => {
+    const fetchAllTasks = async () => {
+      if (!user || !user.token) return;
+
+      try {
+        const res = await fetch("http://localhost:5000/api/tasks", {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch tasks");
+
+        const allTasks = await res.json();
+
+        const groupedByDate = allTasks.reduce((acc, task) => {
+          const taskDate = dayjs(task.due_date).format("YYYY-MM-DD");
+          if (!acc[taskDate]) acc[taskDate] = [];
+          acc[taskDate].push(task);
+          return acc;
+        }, {});
+
+        setNotices(groupedByDate);
+      } catch (error) {
+        console.error("Error fetching all tasks:", error);
+      }
+    };
+
+    fetchAllTasks();
+  }, [user]);
+
   const handleTaskClick = (task) => {
     setSelectedTask(task);
   };
@@ -103,17 +144,43 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     setSelectedDate(selectedDay);
     setIsCardView(true);
     setBreadcrumbExtra?.("Tasks");
-    console.log("User ID:", user.id);
-    console.log("Selected Date:", selectedDay);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/tasks/5/`);
-      const tasks = await res.json();
-      setNotices((prev) => {
-        const updated = { ...prev };
-        updated[selectedDay] = tasks; // Store tasks by full date
-        return updated;
+      // Fetch all tasks
+      const res = await fetch("http://localhost:5000/api/tasks", {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
       });
+
+      const allTasks = await res.json();
+
+      if (!Array.isArray(allTasks)) {
+        throw new Error("Expected tasks to be an array");
+      }
+
+      // Filter only the tasks for this selected date
+      const selectedTasks = allTasks.filter(
+        (task) => dayjs(task.due_date).format("YYYY-MM-DD") === selectedDay
+      );
+
+      setNotices((prev) => ({
+        ...prev,
+        [selectedDay]: selectedTasks,
+      }));
+
+      // Fetch upcoming tasks (separate call!)
+      const upcomingRes = await fetch(
+        "http://localhost:5000/api/tasks/upcoming",
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      const upcomingData = await upcomingRes.json();
+      setUpcomingTasks(Array.isArray(upcomingData) ? upcomingData : []);
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
     }
@@ -123,43 +190,21 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     setIsCardView(false);
     setSelectedTask(null);
     setSelectedDate(null);
-    setBreadcrumbExtra?.(null); // ✅ Resets breadcrumb
+    setBreadcrumbExtra?.(null);
   };
 
   const handleTaskAdd = async (newTask) => {
-    try {
-      const res = await fetch("http://localhost:5000/api/tasks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({
-          title: newTask.title,
-          description: newTask.description,
-          due_date: newTask.dueDate,
-          priority: newTask.priority,
-        }),
-      });
+    const taskDay = dayjs(newTask.due_date).format("YYYY-MM-DD");
 
-      if (!res.ok) throw new Error("Failed to add task");
+    setNotices((prev) => {
+      const updated = { ...prev };
+      if (!updated[taskDay]) updated[taskDay] = [];
+      updated[taskDay].push(newTask);
+      return updated;
+    });
 
-      const addedTask = await res.json();
-      const taskDay = dayjs(addedTask.due_date).format("YYYY-MM-DD");
-
-      setNotices((prev) => {
-        const updated = { ...prev };
-        if (!updated[taskDay]) updated[taskDay] = [];
-        updated[taskDay].push(addedTask);
-        return updated;
-      });
-
-      message.success("Task added!");
-      setShowAddTask(false);
-    } catch (error) {
-      console.error(error);
-      message.error("Failed to add task");
-    }
+    message.success("Task added!");
+    setShowAddTask(false);
   };
 
   return (
@@ -182,7 +227,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   fullscreen={false}
                   onSelect={handleDateSelect}
                   dateFullCellRender={(date) => {
-                    const day = date.format("D");
+                    const day = date.format("YYYY-MM-DD");
                     const hasTask = notices[day] && notices[day].length > 0;
                     return (
                       <div className="calendar-card-date">
@@ -199,7 +244,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   <CalendarCell
                     date={date}
                     events={data[date.format("D")] || []}
-                    notices={notices[date.format("YYYY-MM-DD")] || []} // Fetch by full date
+                    notices={notices[date.format("YYYY-MM-DD")] || []}
                     isCardView={false}
                   />
                 )}
@@ -221,11 +266,12 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 style={{ position: "absolute", top: 0, right: 0 }}
               />
               <h3>Tasks for {selectedDate}</h3>
+
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => setShowAddTask(true)}
-                style={{ marginBottom: 16 }}
+                style={{ marginBottom: "20px" }}
               >
                 Add Task
               </Button>
@@ -243,6 +289,29 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 )}
               />
 
+              <div style={{ marginTop: "30px" }}>
+                <h4>Upcoming Tasks</h4>
+                <List
+                  bordered
+                  dataSource={upcomingTasks}
+                  renderItem={(task) => (
+                    <List.Item key={task.id} style={{ cursor: "pointer" }}>
+                      ⏳ {task.title} - {moment(task.due_date).format("MMM D")}
+                    </List.Item>
+                  )}
+                />
+              </div>
+
+              <div style={{ marginTop: "20px" }}>
+                <h4>Notes</h4>
+                <Input.TextArea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Write your notes here..."
+                  rows={4}
+                />
+              </div>
+
               {selectedTask && (
                 <Card style={{ marginTop: "20px", padding: "15px" }}>
                   <h4>{selectedTask.title}</h4>
@@ -254,7 +323,28 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
           )}
         </div>
 
-        {/* Modals */}
+        {isCardView && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setShowAddTask(true)}
+            style={{
+              position: "fixed",
+              bottom: 20,
+              right: 20,
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              padding: 0,
+              fontSize: 24,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            }}
+          />
+        )}
+
         <Modal
           open={show}
           onOk={() => setShow(false)}

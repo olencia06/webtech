@@ -9,9 +9,11 @@ const AddTask = ({ onTaskAdd }) => {
   const [loading, setLoading] = useState(false);
 
   const handleFinish = async (values) => {
+    console.log("📤 handleFinish called with values:", values);
     setLoading(true);
 
-    const token = localStorage.getItem("authToken"); // Adjust the token key if necessary
+    const token = localStorage.getItem("authToken");
+    console.log("🧾 Retrieved token:", token);
 
     if (!token) {
       message.error("You must be logged in to add a task");
@@ -26,35 +28,30 @@ const AddTask = ({ onTaskAdd }) => {
       priority: values.priority,
     };
 
-    // Debugging: Log the task and the token
-    console.log("New Task:", newTask);
-    console.log("Token:", token);
+    console.log("📦 Sending newTask:", newTask);
 
     try {
       const res = await fetch("http://localhost:5000/api/tasks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // if using JWT
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(newTask),
       });
 
-      // Debugging: Log the response
-      console.log("Response Status:", res.status);
+      console.log("📬 Response status:", res.status);
       const result = await res.json();
+      console.log("📬 Response body:", result);
 
       if (!res.ok) {
-        console.error("Error response:", result); // Log the error message
         throw new Error(result.message || "Failed to add task");
       }
 
-      // Debugging: Log the result
-      console.log("Task Added Successfully:", result);
-      onTaskAdd(result); // Update task list in parent component
+      onTaskAdd(result);
       message.success("Task added successfully!");
     } catch (err) {
-      console.error("Error:", err); // Log the error stack
+      console.error("❌ Error adding task:", err);
       message.error("Something went wrong while adding the task.");
     } finally {
       setLoading(false);

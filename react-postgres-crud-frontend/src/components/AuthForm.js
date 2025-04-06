@@ -16,13 +16,19 @@ const AuthForm = ({ setUser }) => {
     try {
       const response = await login(username, password);
 
-      // Store token and user info in localStorage
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("username", username);
-      setUser({ username }); // Update React state with user info
+      const user = {
+        token: response.data.token,
+        username: response.data.user?.username || username,
+        id: response.data.user?.id,
+      };
+
+      // 💾 Save token in localStorage for later use (AddTask needs this!)
+      localStorage.setItem("authToken", response.data.token);
+
+      // Update global context
+      setUser(user);
       message.success("Login successful!");
 
-      // Navigate to dashboard after successful login
       setTimeout(() => navigate("/dashboard"), 1000);
     } catch (err) {
       message.error(err.response?.data?.error || "Login failed");
