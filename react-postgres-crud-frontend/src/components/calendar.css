@@ -25,19 +25,74 @@
   transition: background-color 0.3s ease;
 }
 
-/* Highlight today's date */
-.today-cell {
-  background-color: #61cbfc !important; /* Yellow background */
+/* Highlight today's date with border */
+.today-glow {
+  border: 1px solid #1890ff;
   font-weight: bold;
+  border-radius: 6px;
+  color: #1890ff;
+}
+
+/* Highlight selected date */
+.selected-date {
+  background-color: #1890ff;
+  color: white;
+  border-radius: 6px;
+  font-weight: bold;
+  box-shadow: 0 0 0 2px #40a9ff inset;
+}
+
+/* Week Days (Su, Mo, etc.) */
+.week-days-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  padding: 0 10px;
+}
+
+.week-day {
+  flex: 1;
+  text-align: center;
+  font-weight: bold;
+  font-size: 13px;
+  color: #555;
 }
 
 /* Date Label */
 .date-label {
-  font-weight: bold;
+  position: relative;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 400;
   color: #333;
 }
 
-/* Event Items */
+/* Task Indicator (Red Dot) */
+.task-dot {
+  width: 6px;
+  height: 6px;
+  background-color: red;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+/* Calendar Day Box (hover + base) */
+.calendar-card-date {
+  position: relative;
+  border-radius: 6px;
+  padding: 6px 0;
+  text-align: center;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.calendar-card-date:hover {
+  background-color: #f0f0f0;
+}
+
+/* Event Item Styles */
 .event-item {
   background: #1890ff;
   color: white;
@@ -57,38 +112,13 @@
   padding: 0;
   margin: 5px 0;
 }
-.week-days-container {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  padding: 0 10px;
-}
 
-.week-day {
-  flex: 1;
-  text-align: center;
-  font-weight: bold;
-}
-.date-label {
-  position: relative;
-  display: inline-block;
-  font-size: 14px;
-}
-
-.task-dot {
-  width: 8px;
-  height: 8px;
-  background-color: red;
-  border-radius: 50%;
-  position: absolute;
-  top: 0;
-  right: 0;
-}
-/* Centering the Year and Month in the Calendar Header */
+/* Center the calendar header month + year */
 .ant-picker-calendar-header {
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
+  padding: 12px 0;
 }
 
 .ant-picker-calendar-header > div {
@@ -96,4 +126,19 @@
   align-items: center;
   justify-content: center;
   flex-grow: 1;
+  font-size: 18px;
+  font-weight: bold;
+}
+.today-glow {
+  background-color: #e6f7ff !important;
+  border: 1px solid #1890ff;
+  border-radius: 6px;
+}
+
+.task-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #ff4d4f;
+  border-radius: 50%;
+  display: inline-block;
 }

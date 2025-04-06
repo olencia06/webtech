@@ -75,7 +75,6 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
   const { user } = useContext(UserContext);
   const [show, setShow] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [data, setData] = useState({});
   const [notices, setNotices] = useState({});
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -86,24 +85,10 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
 
   const { token } = theme.useToken();
 
-  const calendarCardStyle = {
-    width: 300,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
-    padding: "10px",
-  };
-
   const moveEvent = (oldIdx, newD) => {
-    setData((prev) => {
-      const newData = { ...prev };
-      if (!newData[newD]) newData[newD] = [];
-      newData[newD].push(newData[oldIdx]);
-      delete newData[oldIdx];
-      return newData;
-    });
+    // Placeholder for drag functionality
   };
 
-  // ✅ FETCH all tasks on mount
   useEffect(() => {
     const fetchAllTasks = async () => {
       if (!user || !user.token) return;
@@ -118,35 +103,28 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
         if (!res.ok) throw new Error("Failed to fetch tasks");
 
         const allTasks = await res.json();
-
         const groupedByDate = allTasks.reduce((acc, task) => {
           const taskDate = dayjs(task.due_date).format("YYYY-MM-DD");
           if (!acc[taskDate]) acc[taskDate] = [];
           acc[taskDate].push(task);
           return acc;
         }, {});
-
         setNotices(groupedByDate);
       } catch (error) {
-        console.error("Error fetching all tasks:", error);
+        console.error("Error fetching tasks:", error);
       }
     };
 
     fetchAllTasks();
   }, [user]);
 
-  const handleTaskClick = (task) => {
-    setSelectedTask(task);
-  };
-
   const handleDateSelect = async (date) => {
     const selectedDay = date.format("YYYY-MM-DD");
     setSelectedDate(selectedDay);
-    setIsCardView(true);
+    if (!isCardView) setIsCardView(true);
     setBreadcrumbExtra?.("Tasks");
 
     try {
-      // 🟢 Fetch only user's tasks for this selected date from backend
       const res = await fetch(
         `http://localhost:5000/api/tasks?date=${selectedDay}`,
         {
@@ -156,7 +134,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
         }
       );
 
-      if (!res.ok) throw new Error("Failed to fetch tasks for selected date");
+      if (!res.ok) throw new Error("Failed to fetch selected date tasks");
 
       const selectedTasks = await res.json();
 
@@ -165,7 +143,6 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
         [selectedDay]: selectedTasks,
       }));
 
-      // 🔁 Fetch upcoming tasks
       const upcomingRes = await fetch("http://localhost:5000/api/tasks", {
         headers: {
           Authorization: `Bearer ${user.token}`,
@@ -175,29 +152,45 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
       const upcomingData = await upcomingRes.json();
       setUpcomingTasks(Array.isArray(upcomingData) ? upcomingData : []);
     } catch (error) {
-      console.error("Failed to fetch tasks:", error);
+      console.error("Error fetching date tasks:", error);
     }
+  };
+
+  const handleTaskClick = (task) => {
+    setSelectedTask(task); // Set for editing
+    setShowAddTask(true); // Open AddTask modal for editing
   };
 
   const handleCancelView = () => {
     setIsCardView(false);
-    setSelectedTask(null);
     setSelectedDate(null);
+    setSelectedTask(null);
     setBreadcrumbExtra?.(null);
   };
 
-  const handleTaskAdd = async (newTask) => {
+  const handleTaskAdd = (newTask) => {
     const taskDay = dayjs(newTask.due_date).format("YYYY-MM-DD");
 
     setNotices((prev) => {
       const updated = { ...prev };
-      if (!updated[taskDay]) updated[taskDay] = [];
-      updated[taskDay].push(newTask);
+      const existing = updated[taskDay] || [];
+
+      const filtered = existing.filter((t) => t.id !== newTask.id);
+      updated[taskDay] = [...filtered, newTask];
+
       return updated;
     });
 
-    message.success("Task added!");
+    message.success(selectedTask ? "Task updated!" : "Task added!");
     setShowAddTask(false);
+    setSelectedTask(null); // Reset edit state
+  };
+
+  const calendarCardStyle = {
+    width: 300,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusLG,
+    padding: "10px",
   };
 
   return (
@@ -207,47 +200,40 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
           className="main-container"
           style={{ display: "flex", height: "100vh" }}
         >
-          {/* Calendar */}
-          <div
-            style={{
-              width: isCardView ? "30%" : "100%",
-              transition: "width 0.3s ease-in-out",
-            }}
-          >
-            {isCardView ? (
-              <div style={calendarCardStyle}>
-                <Calendar
-                  fullscreen={false}
-                  onSelect={handleDateSelect}
-                  dateFullCellRender={(date) => {
-                    const day = date.format("YYYY-MM-DD");
-                    const hasTask = notices[day] && notices[day].length > 0;
-                    return (
-                      <div className="calendar-card-date">
-                        <span>{date.format("D")}</span>
-                        {hasTask && <span className="task-dot" />}
-                      </div>
-                    );
-                  }}
-                />
-              </div>
-            ) : (
-              <Calendar
-                fullCellRender={(date) => (
-                  <CalendarCell
-                    date={date}
-                    events={data[date.format("D")] || []}
-                    notices={notices[date.format("YYYY-MM-DD")] || []}
-                    isCardView={false}
-                  />
-                )}
-                onSelect={handleDateSelect}
-              />
-            )}
+          {/* Calendar Section */}
+          <div style={{ width: selectedDate ? "30%" : "100%", padding: 20 }}>
+            <Calendar
+              fullscreen={false}
+              onSelect={handleDateSelect}
+              dateFullCellRender={(date) => {
+                const day = date.format("YYYY-MM-DD");
+                const isToday = date.isSame(dayjs(), "day");
+                const isSelected = selectedDate === day;
+                const hasTask = notices[day]?.length > 0;
+
+                return (
+                  <div
+                    className="calendar-card-date"
+                    style={{
+                      padding: 6,
+                      borderRadius: 8,
+                      border: isToday
+                        ? "2px solid #1890ff"
+                        : "1px solid transparent",
+                      backgroundColor: isSelected ? "#f0f5ff" : undefined,
+                      fontWeight: isToday ? "bold" : "normal",
+                    }}
+                  >
+                    <span>{date.format("D")}</span>
+                    {hasTask && <span className="task-dot" />}
+                  </div>
+                );
+              }}
+            />
           </div>
 
           {/* Task Section */}
-          {isCardView && (
+          {selectedDate && (
             <div
               className="task-section"
               style={{ flex: 1, padding: "20px", position: "relative" }}
@@ -259,12 +245,14 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 style={{ position: "absolute", top: 0, right: 0 }}
               />
               <h3>Tasks for {selectedDate}</h3>
-
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => setShowAddTask(true)}
-                style={{ marginBottom: "20px" }}
+                onClick={() => {
+                  setSelectedTask(null); // Clear edit state for new task
+                  setShowAddTask(true);
+                }}
+                style={{ marginBottom: 20 }}
               >
                 Add Task
               </Button>
@@ -282,20 +270,20 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 )}
               />
 
-              <div style={{ marginTop: "30px" }}>
+              <div style={{ marginTop: 30 }}>
                 <h4>Upcoming Tasks</h4>
                 <List
                   bordered
                   dataSource={upcomingTasks}
                   renderItem={(task) => (
-                    <List.Item key={task.id} style={{ cursor: "pointer" }}>
+                    <List.Item key={task.id}>
                       ⏳ {task.title} - {moment(task.due_date).format("MMM D")}
                     </List.Item>
                   )}
                 />
               </div>
 
-              <div style={{ marginTop: "20px" }}>
+              <div style={{ marginTop: 20 }}>
                 <h4>Notes</h4>
                 <Input.TextArea
                   value={notes}
@@ -306,7 +294,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
               </div>
 
               {selectedTask && (
-                <Card style={{ marginTop: "20px", padding: "15px" }}>
+                <Card style={{ marginTop: 20, padding: 15 }}>
                   <h4>{selectedTask.title}</h4>
                   <p>Date: {selectedDate}</p>
                   <p>Details about the task...</p>
@@ -316,28 +304,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
           )}
         </div>
 
-        {isCardView && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setShowAddTask(true)}
-            style={{
-              position: "fixed",
-              bottom: 20,
-              right: 20,
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              padding: 0,
-              fontSize: 24,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
-          />
-        )}
-
+        {/* Modals */}
         <Modal
           open={show}
           onOk={() => setShow(false)}
@@ -350,9 +317,12 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
         <Modal
           open={showAddTask}
           footer={null}
-          onCancel={() => setShowAddTask(false)}
+          onCancel={() => {
+            setShowAddTask(false);
+            setSelectedTask(null);
+          }}
         >
-          <AddTask onTaskAdd={handleTaskAdd} />
+          <AddTask onTaskAdd={handleTaskAdd} existingTask={selectedTask} />
         </Modal>
       </DndProvider>
     </Ctx.Provider>
