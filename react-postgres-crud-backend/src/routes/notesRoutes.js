@@ -1,24 +1,34 @@
 const express = require("express");
 const router = express.Router();
-const notesController = require("../controllers/notesController");
-const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+const auth = require("../middleware/authMiddleware");
+const notesController = require("../controllers/notesController");
 
-// Set up multer for file uploads
+// Ensure 'uploads/' directory exists
+const uploadDir = path.join(__dirname, "..", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+  console.log("📂 Created 'uploads/' folder");
+}
+
+// Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Define upload destination
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Use a unique filename
+    const filename = Date.now() + path.extname(file.originalname);
+    console.log("📎 Multer will save file as:", filename);
+    cb(null, filename);
   },
 });
 
 const upload = multer({ storage });
 
-// Define routes properly
-router.get("/notes", notesController.getNotes); // Correct route handler for getNotes
-router.post("/notes", upload.single("file"), notesController.createNote); // Correct route handler for createNote
-console.log("Route handler for /notes: ", notesController.getNotes);
+// Routes with auth middleware
+router.get("/", auth, notesController.getNotes);
+router.post("/", auth, upload.single("file"), notesController.createNote);
 
 module.exports = router;

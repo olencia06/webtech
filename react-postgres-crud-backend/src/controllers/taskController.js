@@ -1,32 +1,62 @@
 const pool = require("../models/db");
 
 // GET tasks
-exports.getTasks = async (req, res) => {
-  console.log("📥 getTasks triggered");
+const getTasks = async (req, res) => {
+  const userId = req.user?.id;
+  const { date } = req.query;
+
+  console.log("🔍 Fetching tasks...");
+  console.log("🧑 Logged-in user ID:", userId);
+  console.log("📅 Date filter (if any):", date);
 
   try {
-    console.log("🔍 User object from auth middleware:", req.user);
+    if (!userId) {
+      console.warn("⚠️ No user ID found in request. Unauthorized access?");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-    const result = await pool.query("SELECT * FROM tasks WHERE user_id = $1", [
-      req.user.id,
+    if (date) {
+      console.log("📁 Fetching tasks for specific date...");
+      const result = await pool.query(
+        `SELECT * FROM tasks WHERE user_id = $1 AND due_date = $2`,
+        [userId, date]
+      );
+      console.log(`✅ ${result.rows.length} task(s) fetched for date ${date}`);
+      return res.json(result.rows);
+    }
+
+    console.log("📁 Fetching all tasks for user...");
+    const result = await pool.query(`SELECT * FROM tasks WHERE user_id = $1`, [
+      userId,
     ]);
 
-    console.log(`📦 Retrieved ${result.rows.length} tasks from DB`);
-
-    const tasks = result.rows.map((task) => ({
-      ...task,
-      due_date: task.due_date
-        ? task.due_date.toLocaleDateString("en-CA")
-        : null,
-    }));
-
-    res.json(tasks);
-  } catch (err) {
-    console.error("❌ Error in getTasks:", err.message);
-    res.status(500).json({ error: err.message });
+    console.log(
+      `✅ ${result.rows.length} total task(s) found for user ${userId}`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("❌ Error fetching tasks:", error.message);
+    res.status(500).json({ error: "Server Error" });
   }
 };
-exports.createTask = async (req, res) => {
+
+const getUpcomingTasks = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM tasks WHERE user_id = $1 AND due_date > CURRENT_DATE ORDER BY due_date ASC LIMIT 5`,
+      [userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching upcoming tasks:", error.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+const createTask = async (req, res) => {
   const { title, description, due_date, priority } = req.body;
   console.log("📥 createTask triggered");
   console.log("🧑 User:", req.user); // Confirm user is available
@@ -49,7 +79,7 @@ exports.createTask = async (req, res) => {
 };
 
 // UPDATE task (no date adjustment)
-exports.updateTask = async (req, res) => {
+const updateTask = async (req, res) => {
   const { id } = req.params;
   const { title, description, due_date, priority, status } = req.body;
   try {
@@ -65,7 +95,7 @@ exports.updateTask = async (req, res) => {
 };
 
 // DELETE task
-exports.deleteTask = async (req, res) => {
+const deleteTask = async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query("DELETE FROM tasks WHERE id=$1 AND user_id=$2", [
@@ -76,4 +106,11 @@ exports.deleteTask = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+module.exports = {
+  getTasks,
+  getUpcomingTasks,
+  createTask,
+  updateTask,
+  deleteTask,
 };

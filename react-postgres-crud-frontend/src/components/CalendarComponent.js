@@ -146,38 +146,31 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     setBreadcrumbExtra?.("Tasks");
 
     try {
-      // Fetch all tasks
-      const res = await fetch("http://localhost:5000/api/tasks", {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
-
-      const allTasks = await res.json();
-
-      if (!Array.isArray(allTasks)) {
-        throw new Error("Expected tasks to be an array");
-      }
-
-      // Filter only the tasks for this selected date
-      const selectedTasks = allTasks.filter(
-        (task) => dayjs(task.due_date).format("YYYY-MM-DD") === selectedDay
-      );
-
-      setNotices((prev) => ({
-        ...prev,
-        [selectedDay]: selectedTasks,
-      }));
-
-      // Fetch upcoming tasks (separate call!)
-      const upcomingRes = await fetch(
-        "http://localhost:5000/api/tasks/upcoming",
+      // 🟢 Fetch only user's tasks for this selected date from backend
+      const res = await fetch(
+        `http://localhost:5000/api/tasks?date=${selectedDay}`,
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
           },
         }
       );
+
+      if (!res.ok) throw new Error("Failed to fetch tasks for selected date");
+
+      const selectedTasks = await res.json();
+
+      setNotices((prev) => ({
+        ...prev,
+        [selectedDay]: selectedTasks,
+      }));
+
+      // 🔁 Fetch upcoming tasks
+      const upcomingRes = await fetch("http://localhost:5000/api/tasks", {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
 
       const upcomingData = await upcomingRes.json();
       setUpcomingTasks(Array.isArray(upcomingData) ? upcomingData : []);

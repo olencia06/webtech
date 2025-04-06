@@ -1,8 +1,9 @@
 // server.js or index.js
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 
+const bodyParser = require("body-parser");
+const notesRoutes = require("./routes/notesRoutes");
 const authRoutes = require("./routes/authRoutes");
 const taskRoutes = require("./routes/taskRoutes"); // ✅ Import taskRoutes
 const authenticateToken = require("./middleware/authMiddleware");
@@ -13,7 +14,8 @@ app.use(cors());
 app.use(bodyParser.json());
 
 app.use("/auth", authRoutes);
-app.use("/api/tasks", taskRoutes); // ✅ Mount the route here
+app.use("/api/tasks", taskRoutes);
+app.use("/api/notes", notesRoutes);
 
 // Example protected test route (optional)
 app.get("/protected", authenticateToken, (req, res) => {

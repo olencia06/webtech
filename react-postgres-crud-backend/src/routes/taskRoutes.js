@@ -8,6 +8,7 @@ const {
   createTask,
   updateTask,
   deleteTask,
+  getUpcomingTasks,
 } = require("../controllers/taskController");
 
 // Get all tasks for the authenticated user
@@ -21,5 +22,6 @@ router.put("/:id", auth, updateTask);
 
 // Delete a task by ID (only for the owner)
 router.delete("/:id", auth, deleteTask);
+router.get("/", auth, getUpcomingTasks);
 
 module.exports = router;

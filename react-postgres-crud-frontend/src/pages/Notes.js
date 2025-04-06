@@ -1,50 +1,101 @@
 import React, { useState, useEffect } from "react";
-import { Button, List, Modal, Input, Form, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons"; // Import PlusOutlined icon
+import { Button, List, Modal, Input, Form, Upload, message } from "antd";
+import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
 
 const NotesPage = () => {
   const [notes, setNotes] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
 
-  // Fetch notes from the backend
-  const fetchNotes = async () => {
+  const getToken = () => {
     try {
-      const response = await fetch("http://localhost:5000/api/notes"); // Your API endpoint
+      const userData = localStorage.getItem("user");
+      if (!userData) return null;
+      const parsed = JSON.parse(userData);
+      return parsed.token;
+    } catch (err) {
+      console.error("❌ Failed to parse token from localStorage:", err);
+      return null;
+    }
+  };
+
+  const fetchNotes = async () => {
+    const token = getToken();
+    console.log("📦 [fetchNotes] Retrieved token:", token);
+    if (!token) return;
+
+    try {
+      const response = await fetch("http://localhost:5000/api/notes", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       const data = await response.json();
-      setNotes(data);
+      setNotes(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching notes:", error);
     }
   };
 
   useEffect(() => {
-    fetchNotes(); // Fetch notes when the component is mounted
+    fetchNotes();
   }, []);
 
   const handleAddNote = async (values) => {
+    const token = getToken();
+    if (!token) {
+      message.error("User not authenticated");
+      return;
+    }
+
+    const file = values.file?.[0]?.originFileObj;
+
+    console.log("🧪 [handleAddNote] Title:", values.title);
+    console.log("🧪 [handleAddNote] Subject:", values.subject);
+    console.log("🧪 [handleAddNote] File:", file);
+
+    if (!file) {
+      console.error("❌ No file attached");
+      message.error("Please upload a valid file");
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append("title", values.title);
       formData.append("subject", values.subject);
-      formData.append("file", values.file[0]); // Append the file
+      formData.append("file", file);
 
-      const response = await fetch("http://localhost:5000/api/notes", {
+      console.log("📦 [handleAddNote] FormData:");
+      for (let [key, value] of formData.entries()) {
+        console.log(`🔹 ${key}:`, value);
+      }
+
+      const res = await fetch("http://localhost:5000/api/notes", {
         method: "POST",
-        body: formData, // Send as FormData (no headers needed for multipart)
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Content-Type not needed with FormData
+        },
+        body: formData,
       });
 
-      if (response.ok) {
+      const data = await res.json();
+      console.log("📬 [handleAddNote] Server response:", data);
+
+      if (res.ok) {
         message.success("Note added successfully!");
         setIsModalVisible(false);
-        fetchNotes(); // Refresh the list
         form.resetFields();
+        fetchNotes();
       } else {
-        message.error("Failed to add note");
+        console.error("❌ Failed to add note:", data);
+        message.error(data.message || "Failed to add note");
       }
     } catch (error) {
+      console.error("❌ Error adding note:", error);
       message.error("Error adding note");
-      console.error("Error:", error);
     }
   };
 
@@ -60,18 +111,17 @@ const NotesPage = () => {
               <strong>{note.title}</strong>
               <p>{note.subject}</p>
               <a
-                href={note.file_path}
+                href={`http://localhost:5000/${note.file_path}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Download File
+                {note.file_path.split("/").pop()}
               </a>
             </div>
           </List.Item>
         )}
       />
 
-      {/* Floating action button */}
       <Button
         type="primary"
         icon={<PlusOutlined />}
@@ -92,14 +142,13 @@ const NotesPage = () => {
         }}
       />
 
-      {/* Modal for adding notes */}
       <Modal
         title="Add New Note"
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >
-        <Form form={form} onFinish={handleAddNote}>
+        <Form form={form} onFinish={handleAddNote} layout="vertical">
           <Form.Item
             label="Title"
             name="title"
@@ -107,24 +156,32 @@ const NotesPage = () => {
           >
             <Input />
           </Form.Item>
+
           <Form.Item
             label="Subject"
             name="subject"
-            rules={[
-              { required: true, message: "Please enter the note subject" },
-            ]}
+            rules={[{ required: true, message: "Please enter the subject" }]}
           >
             <Input />
           </Form.Item>
+
           <Form.Item
             label="File"
             name="file"
+            valuePropName="fileList"
+            getValueFromEvent={(e) => {
+              console.log("📂 Upload Event:", e);
+              return e?.fileList || [];
+            }}
             rules={[{ required: true, message: "Please upload a file" }]}
           >
-            <Input type="file" />
+            <Upload beforeUpload={() => false} maxCount={1}>
+              <Button icon={<UploadOutlined />}>Click to Upload</Button>
+            </Upload>
           </Form.Item>
+
           <Form.Item>
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" block>
               Submit
             </Button>
           </Form.Item>
