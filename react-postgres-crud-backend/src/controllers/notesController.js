@@ -1,7 +1,7 @@
 const pool = require("../models/db");
 const path = require("path");
 
-// Get notes for authenticated user
+// GET Notes with JOIN to users
 const getNotes = async (req, res) => {
   const userId = req.user?.id;
 
@@ -9,17 +9,23 @@ const getNotes = async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT * FROM notes WHERE user_id = $1 ORDER BY uploaded_at DESC",
+      `
+      SELECT notes.*, users.username
+      FROM notes
+      INNER JOIN users ON notes.user_id = users.id
+      WHERE users.id = $1
+      ORDER BY notes.uploaded_at DESC
+      `,
       [userId]
     );
     res.status(200).json(result.rows);
   } catch (err) {
-    console.error("❌ Error fetching notes:", err.message);
+    console.error("❌ Error fetching notes with join:", err.message);
     res.status(500).json({ message: "Failed to fetch notes" });
   }
 };
 
-// Add new note for authenticated user
+// CREATE Note with optional JOIN validation
 const createNote = async (req, res) => {
   console.log("📥 [createNote] New note upload request received.");
 
@@ -27,14 +33,7 @@ const createNote = async (req, res) => {
   const { title, subject } = req.body;
   const file = req.file;
 
-  console.log("🧾 Request body:", req.body);
-  console.log("📎 Uploaded file:", file);
-  console.log("👤 Authenticated user ID:", userId);
-
   if (!userId || !title || !subject || !file) {
-    console.warn(
-      "⚠️ Missing data - one of userId, title, subject, or file is undefined"
-    );
     return res.status(400).json({
       message: "User, title, subject, and file are required.",
       debug: { userId, title, subject, file },
@@ -42,23 +41,32 @@ const createNote = async (req, res) => {
   }
 
   const filePath = path.join("uploads", file.filename);
-  console.log("📂 File will be stored at:", filePath);
 
   try {
+    // Optional: Validate user exists via JOIN (or simple SELECT)
+    const userCheck = await pool.query(`SELECT id FROM users WHERE id = $1`, [
+      userId,
+    ]);
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const result = await pool.query(
-      "INSERT INTO notes (user_id, title, subject, file_path) VALUES ($1, $2, $3, $4) RETURNING *",
+      `
+      INSERT INTO notes (user_id, title, subject, file_path)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+      `,
       [userId, title, subject, filePath]
     );
-
-    console.log("✅ Note inserted into DB:", result.rows[0]);
 
     res.status(201).json({
       message: "Note uploaded successfully",
       note: result.rows[0],
     });
   } catch (err) {
-    console.error("❌ Error uploading note to DB:", err.message);
-    console.error("📛 Full error object:", err);
+    console.error("❌ Error uploading note:", err.message);
     res.status(500).json({
       message: "Failed to upload note",
       error: err.message,

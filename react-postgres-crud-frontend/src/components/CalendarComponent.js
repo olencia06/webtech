@@ -1,4 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
+import { Popconfirm } from "antd";
+
 import "antd/dist/reset.css";
 import "./calendar.css";
 import {
@@ -192,6 +194,33 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     borderRadius: token.borderRadiusLG,
     padding: "10px",
   };
+  const handleDeleteTask = async (taskId) => {
+    if (!user || !user.token) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to delete task");
+
+      // Update state after deletion
+      setNotices((prev) => {
+        const updated = { ...prev };
+        const dayTasks = updated[selectedDate] || [];
+        updated[selectedDate] = dayTasks.filter((task) => task.id !== taskId);
+        return updated;
+      });
+
+      message.success("Task deleted!");
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      message.error("Failed to delete task");
+    }
+  };
 
   return (
     <Ctx.Provider value={{ setShow, setSelectedEvent, moveEvent }}>
@@ -262,10 +291,28 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 dataSource={notices[selectedDate] || []}
                 renderItem={(task) => (
                   <List.Item
-                    onClick={() => handleTaskClick(task)}
-                    style={{ cursor: "pointer" }}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
                   >
-                    📌 {task.title}
+                    <span
+                      onClick={() => handleTaskClick(task)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      📌 {task.title}
+                    </span>
+                    <Popconfirm
+                      title="Are you sure you want to delete this task?"
+                      onConfirm={() => handleDeleteTask(task.id)}
+                      okText="Yes"
+                      cancelText="No"
+                    >
+                      <Button type="text" danger size="small">
+                        Delete
+                      </Button>
+                    </Popconfirm>
                   </List.Item>
                 )}
               />
