@@ -332,7 +332,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 const isToday = date.isSame(dayjs(), "day");
                 const isSelected = selectedDate === day;
                 const tasks = notices[day] || [];
-
+              
                 return (
                   <div
                     style={{
@@ -347,14 +347,9 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                       position: "relative",
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span>{date.format("D")}</span>
-                      {isCardView && tasks.length > 0 && (
+                      {isCardView && tasks.some((task) => !task.is_completed) && (
                         <span
                           style={{
                             width: 6,
@@ -368,31 +363,47 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                         />
                       )}
                     </div>
-
-                    {tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        style={{
-                          fontSize: "0.75rem",
-                          backgroundColor: "#e6f7ff",
-                          borderLeft: `4px solid ${getPriorityColor(
-                            task.priority
-                          )}`,
-                          borderRadius: 4,
-                          padding: "2px 6px",
-                          marginTop: 4,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                        title={`${task.title} (${task.priority || "None"})`}
-                      >
-                        {task.title}
-                      </div>
-                    ))}
+              
+                    <div style={{ marginTop: 4 }}>
+                      {tasks.map((task) =>
+                        isCardView ? (
+                          // 📦 COMPACT MODE: Render colored bar only
+                          <div
+                            key={task.id}
+                            title={task.title}
+                            style={{
+                              height: 6,
+                              backgroundColor: getPriorityColor(task.priority),
+                              borderRadius: 3,
+                              marginTop: 4,
+                            }}
+                          />
+                        ) : (
+                          // 📋 FULLSCREEN MODE: Render detailed task block
+                          <div
+                            key={task.id}
+                            style={{
+                              fontSize: "0.75rem",
+                              backgroundColor: "#e6f7ff",
+                              borderLeft: `4px solid ${getPriorityColor(task.priority)}`,
+                              borderRadius: 4,
+                              padding: "2px 6px",
+                              marginTop: 4,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                            title={`${task.title} (${task.priority || "None"})`}
+                          >
+                            {task.title}
+                          </div>
+                        )
+                      )}
+                    </div>
                   </div>
                 );
               }}
+                           
             />
           </div>
 
