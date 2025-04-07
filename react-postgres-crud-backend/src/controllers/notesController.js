@@ -73,8 +73,38 @@ const createNote = async (req, res) => {
     });
   }
 };
+// DELETE a note by ID
+const deleteNote = async (req, res) => {
+  const userId = req.user?.id;
+  const noteId = req.params.id;
+
+  if (!userId || !noteId) {
+    return res.status(400).json({ message: "Missing user or note ID" });
+  }
+
+  try {
+    const checkNote = await pool.query(
+      `SELECT * FROM notes WHERE id = $1 AND user_id = $2`,
+      [noteId, userId]
+    );
+
+    if (checkNote.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Note not found or unauthorized" });
+    }
+
+    await pool.query(`DELETE FROM notes WHERE id = $1`, [noteId]);
+
+    res.status(200).json({ message: "Note deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting note:", err.message);
+    res.status(500).json({ message: "Failed to delete note" });
+  }
+};
 
 module.exports = {
   getNotes,
   createNote,
+  deleteNote,
 };

@@ -295,7 +295,13 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 setCurrentMonth(value.month());
               }}
               headerRender={() => (
-                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                >
                   <div className="custom-dropdowns">
                     <select
                       className="custom-select"
@@ -326,13 +332,12 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   </div>
                 </div>
               )}
-              
               dateFullCellRender={(date) => {
                 const day = date.format("YYYY-MM-DD");
                 const isToday = date.isSame(dayjs(), "day");
                 const isSelected = selectedDate === day;
                 const tasks = notices[day] || [];
-              
+
                 return (
                   <div
                     style={{
@@ -347,23 +352,29 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                       position: "relative",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <span>{date.format("D")}</span>
-                      {isCardView && tasks.some((task) => !task.is_completed) && (
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            backgroundColor: "#1890ff",
-                            marginLeft: 4,
-                            marginTop: 2,
-                            display: "inline-block",
-                          }}
-                        />
-                      )}
+                      {isCardView &&
+                        tasks.some((task) => !task.is_completed) && (
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              backgroundColor: "#1890ff",
+                              marginLeft: 4,
+                              marginTop: 2,
+                              display: "inline-block",
+                            }}
+                          />
+                        )}
                     </div>
-              
+
                     <div style={{ marginTop: 4 }}>
                       {tasks.map((task) =>
                         isCardView ? (
@@ -385,7 +396,9 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                             style={{
                               fontSize: "0.75rem",
                               backgroundColor: "#e6f7ff",
-                              borderLeft: `4px solid ${getPriorityColor(task.priority)}`,
+                              borderLeft: `4px solid ${getPriorityColor(
+                                task.priority
+                              )}`,
                               borderRadius: 4,
                               padding: "2px 6px",
                               marginTop: 4,
@@ -403,7 +416,6 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   </div>
                 );
               }}
-                           
             />
           </div>
 
@@ -418,30 +430,41 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
               <h3>Tasks for {selectedDate}</h3>
               <Button
                 type="primary"
+                shape="circle"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setSelectedTask(null);
                   setShowAddTask(true);
                 }}
-                style={{ marginBottom: 20 }}
-              >
-                Add Task
-              </Button>
+                style={{
+                  position: "fixed",
+                  bottom: 24,
+                  right: 24,
+                  width: 60,
+                  height: 60,
+                  zIndex: 1000,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                }}
+              />
 
               <List
                 bordered
                 dataSource={notices[selectedDate] || []}
                 renderItem={(task) => {
-                  const isTodayOrEarlier = dayjs(task.due_date).isSameOrBefore(dayjs(), "day");
+                  const isTodayOrEarlier = dayjs(task.due_date).isSameOrBefore(
+                    dayjs(),
+                    "day"
+                  );
 
                   // Define background colors for priorities
                   const priorityColors = {
-                    High: "#ffccc7",     // light red
-                    Medium: "#ffe58f",   // light yellow
-                    Low: "#d9f7be",      // light green
+                    High: "#ffccc7", // light red
+                    Medium: "#ffe58f", // light yellow
+                    Low: "#d9f7be", // light green
                   };
 
-                  const backgroundColor = priorityColors[task.priority] || "#ffffff"; // default to white
+                  const backgroundColor =
+                    priorityColors[task.priority] || "#ffffff"; // default to white
 
                   return (
                     <List.Item
@@ -474,7 +497,9 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                           onClick={() => handleTaskClick(task)}
                           style={{
                             cursor: "pointer",
-                            textDecoration: task.is_completed ? "line-through" : "none",
+                            textDecoration: task.is_completed
+                              ? "line-through"
+                              : "none",
                             color: task.is_completed ? "#999" : "#000",
                           }}
                         >
@@ -496,7 +521,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   );
                 }}
               />
-              
+
               <div style={{ marginTop: 30 }}>
                 <h4>Upcoming Tasks</h4>
                 <List
