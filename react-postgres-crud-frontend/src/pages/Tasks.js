@@ -179,23 +179,17 @@ const Tasks = () => {
                   }}
                 >
                   <div style={{ flex: 1 }}>
-                    <Checkbox
-                      checked={task.is_completed}
-                      onChange={() =>
-                        toggleCompletion(task.id, task.is_completed)
-                      }
+                    <div
+                      style={{
+                        textDecoration: task.is_completed
+                          ? "line-through"
+                          : "none",
+                        color: task.is_completed ? "gray" : "inherit",
+                        fontWeight: "bold",
+                      }}
                     >
-                      <span
-                        style={{
-                          textDecoration: task.is_completed
-                            ? "line-through"
-                            : "none",
-                          color: task.is_completed ? "gray" : "inherit",
-                        }}
-                      >
-                        {task.title}
-                      </span>
-                    </Checkbox>
+                      {task.title}
+                    </div>
                     <div>
                       <Tag
                         color={

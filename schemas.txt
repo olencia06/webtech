@@ -1,0 +1,29 @@
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    name VARCHAR(100) NOT NULL
+);
+
+
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    due_date DATE,
+    priority VARCHAR(10) CHECK (priority IN ('Low', 'Medium', 'High')),
+    status VARCHAR(20) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_completed BOOLEAN DEFAULT FALSE
+);
+
+
+CREATE TABLE notes (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    subject VARCHAR(100),
+    file_path TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);

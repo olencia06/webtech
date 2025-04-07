@@ -474,7 +474,9 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 <h4>Upcoming Tasks</h4>
                 <List
                   bordered
-                  dataSource={upcomingTasks}
+                  dataSource={upcomingTasks.filter((task) =>
+                    dayjs(task.due_date).isAfter(dayjs(selectedDate), "day")
+                  )}
                   renderItem={(task) => (
                     <List.Item key={task.id}>
                       <div>
