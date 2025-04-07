@@ -1,8 +1,4 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Popconfirm } from "antd";
-
-import "antd/dist/reset.css";
-import "./calendar.css";
 import {
   Calendar,
   Card,
@@ -12,6 +8,7 @@ import {
   theme,
   message,
   Input,
+  Popconfirm,
 } from "antd";
 import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
@@ -20,9 +17,13 @@ import moment from "moment";
 import dayjs from "dayjs";
 import AddTask from "../components/AddTask";
 import { UserContext } from "../context/UserContext";
+import "antd/dist/reset.css";
+import "./calendar.css";
 
+// Context for internal communication
 const Ctx = React.createContext(null);
 
+// Drag-enabled event item
 const EventCell = ({ event, eventIdx }) => {
   const [, drag] = useDrag({
     type: "event",
@@ -45,6 +46,7 @@ const EventCell = ({ event, eventIdx }) => {
   );
 };
 
+// Drop-enabled calendar day cell
 const CalendarCell = ({ date, events, notices, isCardView }) => {
   const { moveEvent } = useContext(Ctx);
   const [, drop] = useDrop({
@@ -67,10 +69,24 @@ const CalendarCell = ({ date, events, notices, isCardView }) => {
         ))}
       </ul>
       {!isCardView && hasTask && (
-        <div className="notice">📢 {notices[0].title}</div>
+        <div className="notice">Notice Title: {notices[0].title}</div>
       )}
     </div>
   );
+};
+
+// Color utility
+const getPriorityColor = (priority) => {
+  switch (priority) {
+    case "High":
+      return "#ff4d4f";
+    case "Medium":
+      return "#faad14";
+    case "Low":
+      return "#52c41a";
+    default:
+      return "#d9d9d9";
+  }
 };
 
 const CalendarComponent = ({ setBreadcrumbExtra }) => {
@@ -91,6 +107,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     // Placeholder for drag functionality
   };
 
+  // Fetch all tasks and group by date
   useEffect(() => {
     const fetchAllTasks = async () => {
       if (!user || !user.token) return;
@@ -105,13 +122,13 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
         if (!res.ok) throw new Error("Failed to fetch tasks");
 
         const allTasks = await res.json();
-        const groupedByDate = allTasks.reduce((acc, task) => {
+        const grouped = allTasks.reduce((acc, task) => {
           const taskDate = dayjs(task.due_date).format("YYYY-MM-DD");
           if (!acc[taskDate]) acc[taskDate] = [];
           acc[taskDate].push(task);
           return acc;
         }, {});
-        setNotices(groupedByDate);
+        setNotices(grouped);
       } catch (error) {
         console.error("Error fetching tasks:", error);
       }
@@ -130,13 +147,9 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
       const res = await fetch(
         `http://localhost:5000/api/tasks?date=${selectedDay}`,
         {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
+          headers: { Authorization: `Bearer ${user.token}` },
         }
       );
-
-      if (!res.ok) throw new Error("Failed to fetch selected date tasks");
 
       const selectedTasks = await res.json();
 
@@ -146,21 +159,19 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
       }));
 
       const upcomingRes = await fetch("http://localhost:5000/api/tasks", {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
+        headers: { Authorization: `Bearer ${user.token}` },
       });
 
       const upcomingData = await upcomingRes.json();
       setUpcomingTasks(Array.isArray(upcomingData) ? upcomingData : []);
     } catch (error) {
-      console.error("Error fetching date tasks:", error);
+      console.error("Error fetching tasks:", error);
     }
   };
 
   const handleTaskClick = (task) => {
-    setSelectedTask(task); // Set for editing
-    setShowAddTask(true); // Open AddTask modal for editing
+    setSelectedTask(task);
+    setShowAddTask(true);
   };
 
   const handleCancelView = () => {
@@ -176,38 +187,51 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     setNotices((prev) => {
       const updated = { ...prev };
       const existing = updated[taskDay] || [];
-
       const filtered = existing.filter((t) => t.id !== newTask.id);
       updated[taskDay] = [...filtered, newTask];
-
       return updated;
     });
 
     message.success(selectedTask ? "Task updated!" : "Task added!");
     setShowAddTask(false);
-    setSelectedTask(null); // Reset edit state
+    setSelectedTask(null);
   };
 
-  const calendarCardStyle = {
-    width: 300,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
-    padding: "10px",
+  const handleToggleComplete = async (task) => {
+    if (!user || !user.token) return;
+
+    try {
+      const updatedTask = { ...task, completed: !task.completed };
+
+      const res = await fetch(`http://localhost:5000/api/tasks/${task.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify(updatedTask),
+      });
+
+      if (!res.ok) throw new Error("Failed to update task");
+
+      handleTaskAdd(updatedTask);
+    } catch (error) {
+      console.error("Error toggling completion:", error);
+      message.error("Failed to update task status");
+    }
   };
+
   const handleDeleteTask = async (taskId) => {
     if (!user || !user.token) return;
 
     try {
       const res = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
+        headers: { Authorization: `Bearer ${user.token}` },
       });
 
       if (!res.ok) throw new Error("Failed to delete task");
 
-      // Update state after deletion
       setNotices((prev) => {
         const updated = { ...prev };
         const dayTasks = updated[selectedDate] || [];
@@ -222,14 +246,21 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     }
   };
 
+  const exportNotes = () => {
+    const blob = new Blob([notes], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `notes-${selectedDate || "calendar"}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Ctx.Provider value={{ setShow, setSelectedEvent, moveEvent }}>
       <DndProvider backend={HTML5Backend}>
-        <div
-          className="main-container"
-          style={{ display: "flex", height: "100vh" }}
-        >
-          {/* Calendar Section */}
+        <div style={{ display: "flex", height: "100vh" }}>
           <div style={{ width: selectedDate ? "30%" : "100%", padding: 20 }}>
             <Calendar
               fullscreen={false}
@@ -238,11 +269,10 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 const day = date.format("YYYY-MM-DD");
                 const isToday = date.isSame(dayjs(), "day");
                 const isSelected = selectedDate === day;
-                const hasTask = notices[day]?.length > 0;
+                const tasks = notices[day] || [];
 
                 return (
                   <div
-                    className="calendar-card-date"
                     style={{
                       padding: 6,
                       borderRadius: 8,
@@ -251,22 +281,61 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                         : "1px solid transparent",
                       backgroundColor: isSelected ? "#f0f5ff" : undefined,
                       fontWeight: isToday ? "bold" : "normal",
+                      minHeight: 60,
+                      position: "relative",
                     }}
                   >
-                    <span>{date.format("D")}</span>
-                    {hasTask && <span className="task-dot" />}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span>{date.format("D")}</span>
+                      {isCardView && tasks.length > 0 && (
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            backgroundColor: "#52c41a",
+                            marginLeft: 4,
+                            marginTop: 2,
+                            display: "inline-block",
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        style={{
+                          fontSize: "0.75rem",
+                          backgroundColor: "#e6f7ff",
+                          borderLeft: `4px solid ${getPriorityColor(
+                            task.priority
+                          )}`,
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          marginTop: 4,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                        title={`${task.title} (${task.priority || "None"})`}
+                      >
+                        {task.title}
+                      </div>
+                    ))}
                   </div>
                 );
               }}
             />
           </div>
 
-          {/* Task Section */}
           {selectedDate && (
-            <div
-              className="task-section"
-              style={{ flex: 1, padding: "20px", position: "relative" }}
-            >
+            <div style={{ flex: 1, padding: 20, position: "relative" }}>
               <Button
                 type="text"
                 icon={<CloseOutlined />}
@@ -278,7 +347,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => {
-                  setSelectedTask(null); // Clear edit state for new task
+                  setSelectedTask(null);
                   setShowAddTask(true);
                 }}
                 style={{ marginBottom: 20 }}
@@ -299,20 +368,34 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   >
                     <span
                       onClick={() => handleTaskClick(task)}
-                      style={{ cursor: "pointer" }}
+                      style={{
+                        cursor: "pointer",
+                        textDecoration: task.completed
+                          ? "line-through"
+                          : "none",
+                      }}
                     >
-                      📌 {task.title}
+                      {task.title}
                     </span>
-                    <Popconfirm
-                      title="Are you sure you want to delete this task?"
-                      onConfirm={() => handleDeleteTask(task.id)}
-                      okText="Yes"
-                      cancelText="No"
-                    >
-                      <Button type="text" danger size="small">
-                        Delete
+                    <div>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={() => handleToggleComplete(task)}
+                      >
+                        {task.completed ? "Undo" : "Done"}
                       </Button>
-                    </Popconfirm>
+                      <Popconfirm
+                        title="Are you sure you want to delete this task?"
+                        onConfirm={() => handleDeleteTask(task.id)}
+                        okText="Yes"
+                        cancelText="No"
+                      >
+                        <Button type="text" danger size="small">
+                          Delete
+                        </Button>
+                      </Popconfirm>
+                    </div>
                   </List.Item>
                 )}
               />
@@ -338,20 +421,14 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   placeholder="Write your notes here..."
                   rows={4}
                 />
+                <Button onClick={exportNotes} style={{ marginTop: 10 }}>
+                  Export Notes
+                </Button>
               </div>
-
-              {selectedTask && (
-                <Card style={{ marginTop: 20, padding: 15 }}>
-                  <h4>{selectedTask.title}</h4>
-                  <p>Date: {selectedDate}</p>
-                  <p>Details about the task...</p>
-                </Card>
-              )}
             </div>
           )}
         </div>
 
-        {/* Modals */}
         <Modal
           open={show}
           onOk={() => setShow(false)}
@@ -369,7 +446,11 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
             setSelectedTask(null);
           }}
         >
-          <AddTask onTaskAdd={handleTaskAdd} existingTask={selectedTask} />
+          <AddTask
+            onTaskAdd={handleTaskAdd}
+            existingTask={selectedTask}
+            defaultDate={selectedDate}
+          />
         </Modal>
       </DndProvider>
     </Ctx.Provider>

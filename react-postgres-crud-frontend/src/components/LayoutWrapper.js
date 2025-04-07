@@ -46,7 +46,7 @@ const LayoutWrapper = ({ children, user }) => {
         }}
       >
         <div style={{ fontSize: "20px", color: "#fff", fontWeight: "bold" }}>
-          Planner {user?.username && `- ${user.username}`}
+          Planner
         </div>
         <Menu
           theme="dark"
@@ -73,10 +73,6 @@ const LayoutWrapper = ({ children, user }) => {
       </Header>
 
       <Content style={{ padding: "40px 60px" }}>{children}</Content>
-
-      <Footer style={{ textAlign: "center" }}>
-        Ant Design ©{new Date().getFullYear()} Created by Ant UED
-      </Footer>
 
       {/* Drawer for Profile */}
       <Drawer

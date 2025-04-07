@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 const { TextArea } = Input;
 const { Option } = Select;
 
-const AddTask = ({ onTaskAdd, existingTask }) => {
+const AddTask = ({ onTaskAdd, existingTask, defaultDate }) => {
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -18,13 +18,13 @@ const AddTask = ({ onTaskAdd, existingTask }) => {
       });
     } else {
       form.resetFields();
+      const fillDate = defaultDate ? dayjs(defaultDate) : dayjs();
+      form.setFieldsValue({ due_date: fillDate });
     }
-  }, [existingTask, form]);
+  }, [existingTask, defaultDate]);
 
   const handleFinish = async (values) => {
-    const token = localStorage.getItem("authToken"); // ✅ FIXED KEY
-    console.log("🔑 Token from localStorage:", token);
-
+    const token = localStorage.getItem("authToken");
     if (!token) {
       message.error("User not authenticated. Token not found.");
       return;
@@ -35,12 +35,9 @@ const AddTask = ({ onTaskAdd, existingTask }) => {
       due_date: values.due_date.format("YYYY-MM-DD"),
     };
 
-    console.log("📦 Task data being sent:", taskData);
-
     try {
       let res;
       if (existingTask) {
-        console.log("🛠️ Updating task with ID:", existingTask.id);
         res = await fetch(
           `http://localhost:5000/api/tasks/${existingTask.id}`,
           {
@@ -53,7 +50,6 @@ const AddTask = ({ onTaskAdd, existingTask }) => {
           }
         );
       } else {
-        console.log("🆕 Creating a new task...");
         res = await fetch("http://localhost:5000/api/tasks", {
           method: "POST",
           headers: {
@@ -63,8 +59,6 @@ const AddTask = ({ onTaskAdd, existingTask }) => {
           body: JSON.stringify(taskData),
         });
       }
-
-      console.log("📡 Server response status:", res.status);
 
       if (!res.ok) {
         const errorText = await res.text();
@@ -83,7 +77,14 @@ const AddTask = ({ onTaskAdd, existingTask }) => {
   };
 
   return (
-    <Form form={form} layout="vertical" onFinish={handleFinish}>
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleFinish}
+      initialValues={{
+        due_date: defaultDate ? dayjs(defaultDate) : dayjs(),
+      }}
+    >
       <Form.Item
         label="Title"
         name="title"
