@@ -295,33 +295,38 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 setCurrentMonth(value.month());
               }}
               headerRender={() => (
-                <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
-                  <select
-                    value={currentYear}
-                    onChange={(e) =>
-                      onYearMonthChange(Number(e.target.value), currentMonth)
-                    }
-                  >
-                    {yearOptions.map((y) => (
-                      <option key={y.value} value={y.value}>
-                        {y.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={currentMonth}
-                    onChange={(e) =>
-                      onYearMonthChange(currentYear, Number(e.target.value))
-                    }
-                  >
-                    {monthOptions.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
+                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>
+                  <div className="custom-dropdowns">
+                    <select
+                      className="custom-select"
+                      value={currentYear}
+                      onChange={(e) =>
+                        onYearMonthChange(Number(e.target.value), currentMonth)
+                      }
+                    >
+                      {yearOptions.map((y) => (
+                        <option key={y.value} value={y.value}>
+                          {y.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="custom-select"
+                      value={currentMonth}
+                      onChange={(e) =>
+                        onYearMonthChange(currentYear, Number(e.target.value))
+                      }
+                    >
+                      {monthOptions.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
+              
               dateFullCellRender={(date) => {
                 const day = date.format("YYYY-MM-DD");
                 const isToday = date.isSame(dayjs(), "day");

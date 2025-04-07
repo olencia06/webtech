@@ -6,6 +6,27 @@
   background-color: #f9f9f9;
 }
 
+.custom-dropdowns {
+  display: flex;
+  gap: 12px;
+}
+
+.custom-select {
+  padding: 6px 12px;
+  border: 1px solid #1890ff;
+  border-radius: 8px;
+  background-color: white;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: box-shadow 0.3s ease;
+}
+
+.custom-select:focus {
+  box-shadow: 0 0 4px #1890ff;
+}
+
+
 .calendar-box {
   background: white;
   padding: 20px;
