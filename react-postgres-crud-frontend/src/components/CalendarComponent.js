@@ -432,10 +432,16 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 bordered
                 dataSource={notices[selectedDate] || []}
                 renderItem={(task) => {
-                  const isTodayOrEarlier = dayjs(task.due_date).isSameOrBefore(
-                    dayjs(),
-                    "day"
-                  );
+                  const isTodayOrEarlier = dayjs(task.due_date).isSameOrBefore(dayjs(), "day");
+
+                  // Define background colors for priorities
+                  const priorityColors = {
+                    High: "#ffccc7",     // light red
+                    Medium: "#ffe58f",   // light yellow
+                    Low: "#d9f7be",      // light green
+                  };
+
+                  const backgroundColor = priorityColors[task.priority] || "#ffffff"; // default to white
 
                   return (
                     <List.Item
@@ -443,6 +449,10 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
+                        backgroundColor: backgroundColor,
+                        padding: "12px",
+                        borderRadius: 6,
+                        marginBottom: 8,
                       }}
                     >
                       <div
@@ -464,7 +474,8 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                           onClick={() => handleTaskClick(task)}
                           style={{
                             cursor: "pointer",
-                            textDecoration: task.is_completed ? "" : "none",
+                            textDecoration: task.is_completed ? "line-through" : "none",
+                            color: task.is_completed ? "#999" : "#000",
                           }}
                         >
                           {task.title}
@@ -485,7 +496,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   );
                 }}
               />
-
+              
               <div style={{ marginTop: 30 }}>
                 <h4>Upcoming Tasks</h4>
                 <List
