@@ -1,68 +1,58 @@
-import React, { useEffect, useContext, useState } from "react";
+import React, { useContext, useEffect } from "react";
 import { UserContext } from "../context/UserContext";
 
 const Profile = ({ setBreadcrumbExtra }) => {
-  const { user, setUser } = useContext(UserContext); // Get user and setUser from context
-  const [userDetails, setUserDetails] = useState(null); // Local state for user details
+  const { user, setUser } = useContext(UserContext);
 
   useEffect(() => {
-    setBreadcrumbExtra?.(null); // Clear breadcrumb extras on mount
-
-    if (user?.username) {
-      // Fetch user details using the username
-      const fetchUserDetails = async () => {
-        try {
-          const response = await fetch(`/api/users/${user.username}`); // Adjust API endpoint as needed
-          const data = await response.json();
-          setUserDetails(data); // Assuming the response contains user details
-        } catch (error) {
-          console.error("Error fetching user details:", error);
-        }
-      };
-
-      fetchUserDetails();
-    }
-  }, [setBreadcrumbExtra, user?.username]);
+    console.log("🧠 User from context:", user);
+  }, [user]);
 
   const logout = () => {
-    // Clear user from context and localStorage/sessionStorage
+    console.log("👋 Logging out...");
     setUser(null);
     localStorage.removeItem("authToken");
     sessionStorage.removeItem("authToken");
-    window.location.href = "/login"; // Redirect to login page
+    window.location.href = "/login";
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Profile</h1>
-      {user ? (
-        <div className="bg-white p-4 rounded shadow">
-          {userDetails ? (
-            <>
+    <div className="p-6 max-w-2xl mx-auto">
+      <div className="bg-white shadow-md rounded-xl p-6 border border-gray-200">
+        <h1 className="text-3xl font-semibold text-gray-800 mb-6 border-b pb-2">
+          👤 Profile
+        </h1>
+
+        {user ? (
+          <>
+            <div className="space-y-4 text-lg text-gray-700">
               <p>
-                <strong>Username:</strong> {user.username}
+                <span className="font-semibold">Username:</span>{" "}
+                <span className="text-gray-900">{user.username}</span>
               </p>
               <p>
-                <strong>Name:</strong> {userDetails.name || "Not provided"}
+                <span className="font-semibold">Name:</span>{" "}
+                <span className="text-gray-900">
+                  {user.name || "❌ Not provided"}
+                </span>
               </p>
               <p>
-                <strong>User ID:</strong> {userDetails.user_id}
+                <span className="font-semibold">User ID:</span>{" "}
+                <span className="text-gray-900">{user.id}</span>
               </p>
-              {/* Add more profile details here */}
-            </>
-          ) : (
-            <p>Loading user details...</p>
-          )}
-          <button
-            onClick={logout}
-            className="mt-4 bg-red-500 text-white py-2 px-4 rounded"
-          >
-            Logout
-          </button>
-        </div>
-      ) : (
-        <p>Loading user info...</p>
-      )}
+            </div>
+
+            <button
+              onClick={logout}
+              className="mt-6 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200"
+            >
+              Logout
+            </button>
+          </>
+        ) : (
+          <p className="text-gray-500">Loading user info...</p>
+        )}
+      </div>
     </div>
   );
 };

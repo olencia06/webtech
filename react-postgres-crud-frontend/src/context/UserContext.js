@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from "react";
+import { jwtDecode } from "jwt-decode";
 
 export const UserContext = createContext();
 
@@ -6,27 +7,35 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount: load user from localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("authToken");
 
-    if (storedUser) {
+    if (storedUser && storedToken) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        console.log("User restored from localStorage:", parsedUser);
+        const decoded = jwtDecode(storedToken);
+
+        const fullUser = {
+          ...parsedUser,
+          id: decoded.id,
+          name: decoded.name,
+        };
+
+        setUser(fullUser);
+        console.log("✅ User restored from localStorage & token:", fullUser);
       } catch (err) {
-        console.error("Failed to parse user from localStorage", err);
+        console.error("❌ Failed to restore user from localStorage:", err);
         localStorage.removeItem("user");
+        localStorage.removeItem("authToken");
       }
     } else {
-      console.log("No user found in localStorage.");
+      console.log("⚠️ No user or token in localStorage.");
     }
 
     setLoading(false);
   }, []);
 
-  // Whenever user changes: save to localStorage or clear it
   useEffect(() => {
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));

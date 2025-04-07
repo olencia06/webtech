@@ -6,7 +6,7 @@ import ProfilePage from "../pages/Profile"; // Assuming the Profile content is i
 const { Header, Content, Footer } = Layout;
 
 const menuItems = [
-  { key: "1", label: "Home", path: "/home" },
+  { key: "1", label: "", path: "/" },
   { key: "2", label: "Tasks", path: "/tasks" },
   { key: "3", label: "Notes", path: "/Notes" },
   { key: "4", label: "Calendar", path: "/dashboard" },
