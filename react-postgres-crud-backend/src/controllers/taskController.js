@@ -3,40 +3,56 @@ const pool = require("../models/db");
 // GET tasks
 const getTasks = async (req, res) => {
   const userId = req.user?.id;
-  const { date } = req.query;
+  const { search, priority, status, date } = req.query;
 
   console.log("🔍 Fetching tasks...");
-  console.log("🧑 Logged-in user ID:", userId);
-  console.log("📅 Date filter (if any):", date);
+  console.log("🧑 User ID:", userId);
+  console.log("🔎 Filters received:", { search, priority, status, date });
+
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  let query = `SELECT * FROM tasks WHERE user_id = $1`;
+  let values = [userId];
+  let index = 2;
+
+  if (search) {
+    query += ` AND title ILIKE $${index}`;
+    values.push(`%${search}%`);
+    index++;
+  }
+
+  if (priority) {
+    query += ` AND LOWER(TRIM(priority)) = LOWER(TRIM($${index}))`;
+    values.push(priority);
+    index++;
+  }
+
+  if (status === "completed") {
+    query += ` AND is_completed = true`;
+  } else if (status === "incomplete") {
+    query += ` AND is_completed = false`;
+  }
+
+  if (date) {
+    query += ` AND due_date::date = $${index}`; // Cast to date
+    values.push(date);
+    index++;
+  }
+
+  query += ` ORDER BY due_date ASC`;
+
+  console.log("📄 Final Query:", query);
+  console.log("🧾 Values:", values);
 
   try {
-    if (!userId) {
-      console.warn("⚠️ No user ID found in request. Unauthorized access?");
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    if (date) {
-      console.log("📁 Fetching tasks for specific date...");
-      const result = await pool.query(
-        `SELECT * FROM tasks WHERE user_id = $1 AND due_date = $2`,
-        [userId, date]
-      );
-      console.log(`✅ ${result.rows.length} task(s) fetched for date ${date}`);
-      return res.json(result.rows);
-    }
-
-    console.log("📁 Fetching all tasks for user...");
-    const result = await pool.query(`SELECT * FROM tasks WHERE user_id = $1`, [
-      userId,
-    ]);
-
-    console.log(
-      `✅ ${result.rows.length} total task(s) found for user ${userId}`
-    );
-    res.json(result.rows);
+    const result = await pool.query(query, values);
+    console.log(`✅ Returned ${result.rows.length} task(s)`);
+    return res.json(result.rows);
   } catch (error) {
-    console.error("❌ Error fetching tasks:", error.message);
-    res.status(500).json({ error: "Server Error" });
+    console.error("❌ Error executing query:", error.message);
+    return res.status(500).json({ error: "Server Error" });
   }
 };
 
@@ -58,19 +74,16 @@ const getUpcomingTasks = async (req, res) => {
 
 const createTask = async (req, res) => {
   const { title, description, due_date, priority } = req.body;
-  console.log("📥 createTask triggered");
-  console.log("🧑 User:", req.user); // Confirm user is available
 
   try {
-    const formattedDate = new Date(due_date);
-    const isoDate = formattedDate.toISOString().split("T")[0];
-
+    // No need to reformat due_date if it's already in 'YYYY-MM-DD'
     const result = await pool.query(
-      "INSERT INTO tasks (user_id, title, description, due_date, priority) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [req.user.id, title, description, isoDate, priority]
+      `INSERT INTO tasks (user_id, title, description, due_date, priority)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [req.user.id, title, description, due_date, priority]
     );
 
-    console.log("✅ Task inserted:", result.rows[0]);
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error("❌ Error inserting task:", err.message);
@@ -81,13 +94,38 @@ const createTask = async (req, res) => {
 // UPDATE task (no date adjustment)
 const updateTask = async (req, res) => {
   const { id } = req.params;
-  const { title, description, due_date, priority, status } = req.body;
+  const { title, description, due_date, priority, status, is_completed } =
+    req.body;
+
   try {
-    // ✅ No date shifting here
     const result = await pool.query(
-      "UPDATE tasks SET title=$1, description=$2, due_date=$3, priority=$4, status=$5 WHERE id=$6 AND user_id=$7 RETURNING *",
-      [title, description, due_date, priority, status, id, req.user.id]
+      `UPDATE tasks
+       SET title = COALESCE($1, title),
+           description = COALESCE($2, description),
+           due_date = COALESCE($3, due_date),
+           priority = COALESCE($4, priority),
+           status = COALESCE($5, status),
+           is_completed = COALESCE($6, is_completed)
+       WHERE id = $7 AND user_id = $8
+       RETURNING *`,
+      [
+        title,
+        description,
+        due_date, // <- Pass it directly, no Date conversion
+        priority,
+        status,
+        is_completed,
+        id,
+        req.user.id,
+      ]
     );
+
+    if (result.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Task not found or not authorized" });
+    }
+
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

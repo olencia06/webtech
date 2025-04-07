@@ -14,12 +14,14 @@ import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import moment from "moment";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
 import dayjs from "dayjs";
 import AddTask from "../components/AddTask";
 import { UserContext } from "../context/UserContext";
 import "antd/dist/reset.css";
 import "./calendar.css";
-
+dayjs.extend(isSameOrBefore);
 // Context for internal communication
 const Ctx = React.createContext(null);
 
@@ -100,6 +102,23 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
   const [showAddTask, setShowAddTask] = useState(false);
   const [notes, setNotes] = useState("");
   const [upcomingTasks, setUpcomingTasks] = useState([]);
+  const [currentYear, setCurrentYear] = useState(dayjs().year());
+  const [currentMonth, setCurrentMonth] = useState(dayjs().month());
+
+  const yearOptions = [];
+  for (let i = 2020; i <= 2035; i++) {
+    yearOptions.push({ label: i, value: i });
+  }
+
+  const monthOptions = dayjs.months().map((month, index) => ({
+    label: month,
+    value: index,
+  }));
+
+  const onYearMonthChange = (year, month) => {
+    setCurrentYear(year);
+    setCurrentMonth(month);
+  };
 
   const { token } = theme.useToken();
 
@@ -201,7 +220,11 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
     if (!user || !user.token) return;
 
     try {
-      const updatedTask = { ...task, completed: !task.completed };
+      const updatedTask = {
+        ...task,
+        is_completed: !task.is_completed, // ✅ fix: use `is_completed` instead of `completed`
+        due_date: dayjs(task.due_date).format("YYYY-MM-DD"), // ensure date consistency
+      };
 
       const res = await fetch(`http://localhost:5000/api/tasks/${task.id}`, {
         method: "PUT",
@@ -214,7 +237,8 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
 
       if (!res.ok) throw new Error("Failed to update task");
 
-      handleTaskAdd(updatedTask);
+      const updated = await res.json(); // ✅ get the saved task from backend
+      handleTaskAdd(updated); // ensure UI state reflects actual saved version
     } catch (error) {
       console.error("Error toggling completion:", error);
       message.error("Failed to update task status");
@@ -264,7 +288,40 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
           <div style={{ width: selectedDate ? "30%" : "100%", padding: 20 }}>
             <Calendar
               fullscreen={false}
+              value={dayjs(`${currentYear}-${currentMonth + 1}-01`)}
               onSelect={handleDateSelect}
+              onPanelChange={(value) => {
+                setCurrentYear(value.year());
+                setCurrentMonth(value.month());
+              }}
+              headerRender={() => (
+                <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
+                  <select
+                    value={currentYear}
+                    onChange={(e) =>
+                      onYearMonthChange(Number(e.target.value), currentMonth)
+                    }
+                  >
+                    {yearOptions.map((y) => (
+                      <option key={y.value} value={y.value}>
+                        {y.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={currentMonth}
+                    onChange={(e) =>
+                      onYearMonthChange(currentYear, Number(e.target.value))
+                    }
+                  >
+                    {monthOptions.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               dateFullCellRender={(date) => {
                 const day = date.format("YYYY-MM-DD");
                 const isToday = date.isSame(dayjs(), "day");
@@ -298,7 +355,7 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                             width: 6,
                             height: 6,
                             borderRadius: "50%",
-                            backgroundColor: "#52c41a",
+                            backgroundColor: "#1890ff",
                             marginLeft: 4,
                             marginTop: 2,
                             display: "inline-block",
@@ -358,33 +415,46 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
               <List
                 bordered
                 dataSource={notices[selectedDate] || []}
-                renderItem={(task) => (
-                  <List.Item
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
-                      onClick={() => handleTaskClick(task)}
+                renderItem={(task) => {
+                  const isTodayOrEarlier = dayjs(task.due_date).isSameOrBefore(
+                    dayjs(),
+                    "day"
+                  );
+
+                  return (
+                    <List.Item
                       style={{
-                        cursor: "pointer",
-                        textDecoration: task.completed
-                          ? "line-through"
-                          : "none",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                       }}
                     >
-                      {task.title}
-                    </span>
-                    <div>
-                      <Button
-                        type="link"
-                        size="small"
-                        onClick={() => handleToggleComplete(task)}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
                       >
-                        {task.completed ? "Undo" : "Done"}
-                      </Button>
+                        {isTodayOrEarlier && (
+                          <input
+                            type="checkbox"
+                            checked={task.is_completed}
+                            onChange={() => handleToggleComplete(task)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        )}
+                        <span
+                          onClick={() => handleTaskClick(task)}
+                          style={{
+                            cursor: "pointer",
+                            textDecoration: task.is_completed ? "" : "none",
+                          }}
+                        >
+                          {task.title}
+                        </span>
+                      </div>
+
                       <Popconfirm
                         title="Are you sure you want to delete this task?"
                         onConfirm={() => handleDeleteTask(task.id)}
@@ -395,9 +465,9 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                           Delete
                         </Button>
                       </Popconfirm>
-                    </div>
-                  </List.Item>
-                )}
+                    </List.Item>
+                  );
+                }}
               />
 
               <div style={{ marginTop: 30 }}>
@@ -407,7 +477,11 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                   dataSource={upcomingTasks}
                   renderItem={(task) => (
                     <List.Item key={task.id}>
-                      ⏳ {task.title} - {moment(task.due_date).format("MMM D")}
+                      <div>
+                        {moment(task.due_date).format("MMM D")}
+                        <br />
+                        {task.title}
+                      </div>
                     </List.Item>
                   )}
                 />
