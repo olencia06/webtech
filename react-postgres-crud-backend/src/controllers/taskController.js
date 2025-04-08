@@ -61,7 +61,7 @@ const getUpcomingTasks = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM tasks WHERE user_id = $1 AND due_date > CURRENT_DATE ORDER BY due_date ASC LIMIT 5`,
+      `SELECT * FROM tasks WHERE user_id = $1 ORDER BY due_date ASC LIMIT 5`,
       [userId]
     );
 

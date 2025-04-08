@@ -51,9 +51,7 @@ const Tasks = () => {
       const data = await res.json();
       console.log("📥 Response from server:", data);
 
-      const today = moment().format("YYYY-MM-DD");
-      const upcoming = data.filter((task) => task.due_date >= today);
-      setTasks(upcoming);
+      setTasks(data); // ✅ Show all tasks, not just upcoming
     } catch (error) {
       console.error("❌ Failed to fetch tasks:", error);
       setTasks([]);
@@ -159,6 +157,12 @@ const Tasks = () => {
 
       {loading ? (
         <Spin size="large" />
+      ) : tasks.length === 0 ? (
+        <List
+          bordered
+          dataSource={[]}
+          locale={{ emptyText: "No tasks found!" }}
+        />
       ) : (
         Object.entries(groupedTasks).map(([date, tasksForDate]) => (
           <div key={date} style={{ marginBottom: "2rem" }}>

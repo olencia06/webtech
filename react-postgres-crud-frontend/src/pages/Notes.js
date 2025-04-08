@@ -152,6 +152,14 @@ const NotesPage = () => {
 
       {loading ? (
         <Spin size="large" />
+      ) : notes.length === 0 ? (
+        <div style={{ marginTop: 40, textAlign: "center" }}>
+          <Divider />
+          <h3 style={{ color: "#888" }}>No notes found</h3>
+          <p style={{ color: "#aaa" }}>
+            Click the + button to add your first note!
+          </p>
+        </div>
       ) : (
         Object.entries(groupedNotes).map(([date, notesForDate]) => (
           <div key={date} style={{ marginBottom: "2rem" }}>
@@ -161,45 +169,44 @@ const NotesPage = () => {
             <List
               bordered
               dataSource={notesForDate}
-              renderItem={(note) => {
-                console.log("Rendering note:", note); // Move logging outside of JSX
-
-                return (
-                  <List.Item
-                    key={note.id}
-                    actions={[
-                      <Popconfirm
-                        title="Are you sure you want to delete this note?"
-                        onConfirm={() => handleDeleteNote(note.id)}
-                        okText="Yes"
-                        cancelText="No"
-                      >
-                        <Button type="text" danger size="small">
-                          Delete
-                        </Button>
-                      </Popconfirm>,
-                    ]}
-                  >
-                    <div>
-                      <strong>{note.title}</strong>
-                      <p style={{ marginBottom: 4 }}>{note.subject}</p>
-                      <a
-                        href={
-                          note.file_path.startsWith("http")
-                            ? note.file_path
-                            : `http://localhost:5000/${note.file_path}`
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {note.file_path
+              renderItem={(note) => (
+                <List.Item
+                  key={note.id}
+                  actions={[
+                    <Popconfirm
+                      title="Are you sure you want to delete this note?"
+                      onConfirm={() => handleDeleteNote(note.id)}
+                      okText="Yes"
+                      cancelText="No"
+                    >
+                      <Button type="text" danger size="small">
+                        Delete
+                      </Button>
+                    </Popconfirm>,
+                  ]}
+                >
+                  <div>
+                    <strong>{note.title}</strong>
+                    <p style={{ marginBottom: 4 }}>{note.subject}</p>
+                    <a
+                      href={
+                        note.file_path.startsWith("http")
+                          ? note.file_path
+                          : `http://localhost:5000/${note.file_path}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {
+                        // Display only the filename from the path, not the full URL
+                        note.file_path
                           ? decodeURIComponent(note.file_path.split("/").pop())
-                          : "View File"}
-                      </a>
-                    </div>
-                  </List.Item>
-                );
-              }}
+                          : "View File"
+                      }
+                    </a>
+                  </div>
+                </List.Item>
+              )}
             />
           </div>
         ))
