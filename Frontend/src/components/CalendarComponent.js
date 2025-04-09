@@ -522,6 +522,19 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                 }}
               />
 
+              <div style={{ marginTop: 20 }}>
+                <h4>Notes</h4>
+                <Input.TextArea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Write your notes here..."
+                  rows={4}
+                />
+                <Button onClick={exportNotes} style={{ marginTop: 10 }}>
+                  Export Notes
+                </Button>
+              </div>
+
               <div style={{ marginTop: 30 }}>
                 <h4>Upcoming Tasks</h4>
                 <List
@@ -539,19 +552,6 @@ const CalendarComponent = ({ setBreadcrumbExtra }) => {
                     </List.Item>
                   )}
                 />
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <h4>Notes</h4>
-                <Input.TextArea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Write your notes here..."
-                  rows={4}
-                />
-                <Button onClick={exportNotes} style={{ marginTop: 10 }}>
-                  Export Notes
-                </Button>
               </div>
             </div>
           )}
